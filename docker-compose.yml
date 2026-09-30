@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: secplatform-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-secplatform_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secplatform_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-secplatform_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-secplatform_user} -d ${POSTGRES_DB:-secplatform_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - secnet
+
+  redis:
+    image: redis:7-alpine
+    container_name: secplatform-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - secnet
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: secplatform-backend
+    restart: unless-stopped
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m app.core.seed &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "True"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-secplatform_user}:${POSTGRES_PASSWORD:-secplatform_dev_password}@postgres:5432/${POSTGRES_DB:-secplatform_db}
+      REDIS_URL: redis://redis:6379/0
+      DEV_SEED_PASSWORD: ${DEV_SEED_PASSWORD:-DevSecOps2026!ChangeMe}
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-secret-key-change-in-production-min-32-chars-long}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - secnet
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: secplatform-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - secnet
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  secnet:
+    driver: bridge
