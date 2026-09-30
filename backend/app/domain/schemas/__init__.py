@@ -13,6 +13,15 @@ from app.domain.schemas.mitre import (
     MitreTacticRead,
     MitreEnrichmentRead,
 )
+from app.domain.schemas.incident import (
+    IncidentRead,
+    IncidentDetailRead,
+    IncidentTimelineEventRead,
+    IncidentUpdateStatusRequest,
+    CorrelationSummaryResponse,
+    IncidentDetectionSummary,
+    IncidentMLAnomalySummary,
+)
 
 __all__ = [
     "SecurityEventBase",
@@ -29,5 +38,13 @@ __all__ = [
     "MitreTechniqueRead",
     "MitreTacticRead",
     "MitreEnrichmentRead",
+    "IncidentRead",
+    "IncidentDetailRead",
+    "IncidentTimelineEventRead",
+    "IncidentUpdateStatusRequest",
+    "CorrelationSummaryResponse",
+    "IncidentDetectionSummary",
+    "IncidentMLAnomalySummary",
 ]
+
 
